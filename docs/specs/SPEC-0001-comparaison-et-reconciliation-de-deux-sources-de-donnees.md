@@ -1,10 +1,10 @@
 ---
 id: SPEC-0001
 titre: Comparaison et réconciliation de deux sources de données
-statut: brouillon         # brouillon | validée | implémentée | abandonnée
+statut: implémentée      # brouillon | validée | implémentée | abandonnée
 date: 2026-08-27
 auteur: Claude
-validée par:              # identité git, ou — tant que statut = brouillon
+validée par: user808 <user808@mail.com>
 adr liés:                 # ADR-XXXX, … ou —
 ---
 
@@ -128,17 +128,32 @@ pas si c'est automatique (voir Questions ouvertes).
 
 ## Questions ouvertes
 
-- **Algorithme de similarité approché et bibliothèque associée** (distance de
-  Levenshtein, Jaro-Winkler, autre) — dépendance à ajouter à l'image dédiée, cohérent
-  avec DP-0001 (aucune installation sur l'hôte). Non structurant pour cette spec ;
-  à trancher à l'implémentation.
-- **Publication automatique du rapport vers Superset** (réutilisant le skill
-  `superset-upload`) ou production locale (fichier) pour une première version ? Cette
-  spec ne préjuge pas — à trancher avant l'implémentation.
-- **Seuil de similarité par défaut** et sa calibration : à ajuster empiriquement une
-  fois un premier jeu de données réel disponible ; aucune valeur par défaut n'est
-  imposée ici.
+Tranchées à l'implémentation (2026-08-27), consignées ici plutôt que rejouées :
+
+- **Algorithme de similarité** : `difflib.SequenceMatcher` de la stdlib Python, sur
+  valeurs normalisées (minuscules, accents retirés, espaces compactés) — pas de
+  dépendance externe (pandas/rapidfuzz), pour rester aussi minimal que
+  `superset-uploader` (DP-0001). Score combiné = moyenne simple des similarités par
+  colonne d'appariement.
+- **Publication vers Superset** : pas automatique. `report.csv` est un CSV standard,
+  poussable avec `.claude/skills/superset-upload/upload.sh` comme n'importe quel autre
+  fichier préparé — pas d'intégration dédiée en V1.
+
+Restent ouvertes :
+
+- **Seuil de similarité par défaut** : fixé à 0,85 dans l'implémentation, à ajuster
+  empiriquement une fois un jeu de données réel utilisé.
 - **Généralisation à N sources** (annoncée par le nom du projet) : explicitement hors
   périmètre de cette V1. Si elle est reprise plus tard, elle demandera de nouveaux
   arbitrages (comparer toutes les paires ? une source pivot ?) — à traiter dans une
   spec ultérieure, pas une extension silencieuse de celle-ci.
+- **Performance** : comparaison en O(|A|×|B|), sans indexation/blocage — suffisant
+  pour les volumes visés par ce projet, pas optimisé pour de gros jeux de données.
+
+## Implémentation
+
+`.claude/skills/compare-sources/` — voir son `SKILL.md`. Testé de bout en bout le
+2026-08-27 : suite `unittest` (12 tests, stdlib, exécutée dans l'image Docker) au vert,
+plus un scénario manuel avec typo, accents, doublon interne et enregistrements
+uniques de chaque côté, résultat conforme à tous les critères d'acceptation
+ci-dessus.

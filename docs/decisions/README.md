@@ -28,4 +28,5 @@ porte `validation: à confirmer` — elle tient, mais elle attend une ratificati
 | [ADR-0008](ADR-0008-tracabilite-des-decisions-et-delegations.md) | Traçabilité écrite des décisions, délégations et spécifications | acceptée | user808 <user808@mail.com> | confirmée |
 | [ADR-0009](ADR-0009-workflow-git-et-versionnement.md) | Workflow git — branches thématiques, Conventional Commits, passation écrite | acceptée | user808 <user808@mail.com> | confirmée |
 | [ADR-0010](ADR-0010-vendoriser-la-stack-superset.md) | Vendoriser la stack Superset dans le dépôt plutôt que dépendre d'un clone externe | acceptée | user808 <user808@mail.com> | confirmée |
+| [ADR-0011](ADR-0011-bootstrap-et-smoke-test-integres-a-superset-sh.md) | Bootstrap et smoke-test intégrés à superset.sh | acceptée | user808 <user808@mail.com> | confirmée |
 <!-- INDEX:fin -->

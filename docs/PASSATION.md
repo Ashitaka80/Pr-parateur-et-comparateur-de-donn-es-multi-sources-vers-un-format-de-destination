@@ -7,8 +7,23 @@
 ## En une phrase
 
 Le pipeline « préparer un fichier → le pousser dans Superset comme dataset » est
-écrit, testé et documenté ; **le cœur annoncé du projet — la comparaison
-multi-sources — n'est pas commencé.**
+écrit, testé et documenté. **La comparaison entre deux sources — le cœur annoncé du
+projet — est désormais spécifiée (SPEC-0001) et implémentée** (`.claude/skills/compare-sources/`,
+branche `docs/spec-0001-comparaison-multi-sources`, pas encore mergée dans `main`).
+Reste hors périmètre : la généralisation à plus de deux sources.
+
+## Branches ouvertes, pas encore mergées dans `main` (2026-08-27)
+
+Trois branches coexistent, chacune un chantier distinct, aucune mergée :
+
+| Branche | Contenu | Poussée sur origin ? |
+|---|---|---|
+| `main` | Base : préparation + upload Superset, traçabilité (10 ADR) | — |
+| `feat/bootstrap-smoke-test` | ADR-0011 (`superset.sh bootstrap`/`smoke-test`), ADR-0012 (`scripts/git-push.sh` + credential helper dédié) | Oui, 4 commits |
+| `docs/spec-0001-comparaison-multi-sources` | SPEC-0001 + skill `compare-sources` (implémenté, testé) | **Non — à pousser** |
+
+**Avant de repartir de `main` en clonant à nouveau**, vérifier ces branches sur
+`origin` — leur travail n'existe nulle part ailleurs.
 
 ## État vérifié le 2026-08-27
 
@@ -44,9 +59,12 @@ docker build -t superset-uploader:latest \
 | Skill/tool d'upload vers Superset | Écrit, testé de bout en bout lors d'une session antérieure (CSV de démo, puis fichier INSEE des décès en largeur fixe, 56 493 lignes) |
 | Configuration et secrets (`.env` / `.env.example` / skill `project-init`) | Fait et vérifié |
 | Stack Superset vendorisée (`infra/superset/`) | Démarrée et validée de bout en bout |
-| Traçabilité (`docs/`, skill `decision-log`) | Fait, 10 ADR, 4 délégations, registre à jour |
+| Traçabilité (`docs/`, skill `decision-log`) | Fait, 12 ADR, 4 délégations, 1 spec, registre à jour |
 | Préparation de sources à format non standard | **Ad hoc** : script écrit au cas par cas, jamais généralisé |
-| Comparaison / réconciliation multi-sources | **Pas commencé** |
+| **Comparaison de deux sources** (SPEC-0001) | **Fait** : `compare-sources`, testé (12 tests unitaires + scénario manuel), sur branche `docs/spec-0001-comparaison-multi-sources` |
+| Généralisation de la comparaison à N sources | Pas commencé — explicitement hors périmètre de SPEC-0001 |
+| Bootstrap/smoke-test one-shot pour une machine neuve | Fait (ADR-0011), sur branche `feat/bootstrap-smoke-test` |
+| Script de push git avec authentification dédiée | Fait (ADR-0012), sur branche `feat/bootstrap-smoke-test` — **push toujours à lancer par le développeur**, le classificateur du mode auto le bloque pour Claude |
 | Autres destinations que Superset | Pas commencé |
 | Workers Celery Superset | Jamais démarrés par `superset.sh up` (bug amont, ADR-0006) ; `WITH_WORKERS=1` pour forcer |
 
@@ -65,10 +83,13 @@ docker build -t superset-uploader:latest \
 
 ## Prochaine action recommandée
 
-Écrire **`SPEC-0001` sur la comparaison multi-sources** avant d'écrire du code : c'est
-le cœur du projet, il n'existe pas, et il demande des arbitrages métier (règles
-d'appariement entre sources, traitement des écarts, politique de dédoublonnage) qui
-appartiennent aux développeurs. Modèle : `docs/specs/TEMPLATE.md`.
+1. **Pousser `docs/spec-0001-comparaison-multi-sources` sur origin**, puis ouvrir des
+   PR pour les deux branches en attente et décider d'un ordre de merge dans `main`
+   (elles ne se recouvrent pas, l'ordre importe peu).
+2. Ensuite, au choix de l'équipe : généraliser la comparaison à N sources, généraliser
+   la préparation de formats non standard (actuellement ad hoc), ou décider si
+   `compare-sources` doit pousser son rapport vers Superset automatiquement (question
+   tranchée « non » pour la V1 dans SPEC-0001, à rouvrir si le besoin se confirme).
 
 ## Points ouverts pour l'équipe
 

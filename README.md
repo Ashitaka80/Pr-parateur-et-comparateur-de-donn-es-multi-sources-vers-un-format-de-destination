@@ -10,7 +10,8 @@ vers un format/outil de destination. La destination actuellement implémentée e
   largeur fixe, CSV, Excel, etc.).
 - Les préparer/normaliser (structuration en colonnes, typage, nettoyage) avant
   diffusion.
-- Les comparer entre sources (à venir — voir [Périmètre](#périmètre)).
+- Les comparer entre sources (deux sources, appariement approché, rapport d'écarts —
+  voir [Périmètre](#périmètre) et `SPEC-0001`).
 - Les pousser vers un outil de destination pour exploitation (dashboards,
   exploration), sans étape manuelle dans l'UI de l'outil cible.
 
@@ -24,7 +25,8 @@ vers un format/outil de destination. La destination actuellement implémentée e
 | Gérer les cas table déjà existante (échouer / remplacer / ajouter) | ✅ Fait |
 | Fonctionner sans dépendance Python installée sur la machine hôte | ✅ Fait (tout tourne en conteneurs Docker) |
 | Préparer une source à un format non standard (ex : largeur fixe) avant upload | ✅ Fait à la main pour un cas réel (voir `exemples/`), pas encore généralisé en outil |
-| Comparer plusieurs sources entre elles (diff, réconciliation, dédoublonnage) | ⏳ Pas commencé |
+| Comparer deux sources (appariement approché, écarts, doublons internes/croisés) | ✅ Fait (SPEC-0001, `.claude/skills/compare-sources/`) |
+| Généraliser la comparaison à plus de deux sources | ⏳ Pas commencé (hors périmètre de SPEC-0001) |
 | Automatiser la préparation multi-sources (détection de format, mapping de colonnes) | ⏳ Pas commencé |
 | Support d'autres destinations que Superset | ⏳ Pas commencé (architecture pensée pour être extensible) |
 
@@ -33,13 +35,17 @@ vers un format/outil de destination. La destination actuellement implémentée e
 **Dans le périmètre actuel :**
 - Un outil (skill Claude Code + script) qui pousse un fichier de données local
   vers Superset comme dataset interrogeable.
-- L'infrastructure locale nécessaire pour exécuter et tester cet outil (Superset
+- Un outil de comparaison de **deux** sources déjà préparées (`compare-sources`,
+  SPEC-0001) : appariement approché sur colonnes configurables, détection des
+  doublons internes et croisés, rapport des écarts — sans correction automatique.
+- L'infrastructure locale nécessaire pour exécuter et tester ces outils (Superset
   en Docker).
 
 **Hors périmètre pour l'instant :**
-- La logique de comparaison entre sources multiples (le nom du projet l'annonce,
-  mais ce n'est pas encore implémenté — seul le pipeline de préparation ponctuelle
-  → upload a été validé, à la main, sur un cas réel).
+- La comparaison de **plus de deux** sources simultanément (le nom du projet
+  l'annonce au pluriel ; SPEC-0001 exclut explicitement ce cas pour la V1).
+- Toute résolution automatique des écarts détectés par la comparaison (fusion,
+  source de vérité) — seulement un rapport.
 - Les destinations autres que Superset.
 - Un pipeline automatisé/planifié (aujourd'hui, tout est déclenché manuellement).
 - La gestion multi-utilisateurs / multi-environnements de Superset (l'instance
@@ -150,10 +156,28 @@ structuré (nom, prénoms, sexe, dates, lieux) puis uploadé avec succès comme
 dataset Superset via ce pipeline. Preuve que l'outil tient sur un fichier
 réel, volumineux, et dans un format non trivial.
 
+## Comparer deux sources
+
+```bash
+docker build -t compare-sources:latest .claude/skills/compare-sources/
+
+.claude/skills/compare-sources/compare.sh \
+  --source-a source_a.csv \
+  --source-b source_b.csv \
+  --match-on nom,prenom \
+  --output-dir rapport/
+```
+
+Produit `rapport/report.csv` (statut par enregistrement : `concordant`,
+`ecart_valeur`, `seulement_a`/`seulement_b`, `doublon_croise`) et deux fichiers de
+doublons internes. Détails et critères d'acceptation :
+[`SPEC-0001`](docs/specs/SPEC-0001-comparaison-et-reconciliation-de-deux-sources-de-donnees.md),
+usage complet : [`.claude/skills/compare-sources/SKILL.md`](.claude/skills/compare-sources/SKILL.md).
+
 ## Limitations connues
 
-- Pas de logique de comparaison/réconciliation multi-sources : chaque source
-  est préparée et uploadée indépendamment, à la main.
+- La comparaison ne gère que **deux** sources à la fois (pas de généralisation à N).
+- Aucune résolution automatique des écarts détectés — uniquement un rapport.
 - La préparation d'un format non standard (ex. largeur fixe) est encore
   ad hoc (script écrit au cas par cas), pas un outil générique paramétrable.
 - Instance Superset de dev, mono-utilisateur, sans HTTPS ni durcissement
@@ -165,7 +189,7 @@ réel, volumineux, et dans un format non trivial.
 
 - Généraliser la préparation de sources à formats variés (détection de format,
   mapping de colonnes configurable) plutôt que des scripts ad hoc.
-- Implémenter la comparaison entre sources (le cœur du nom du projet).
+- Généraliser la comparaison à plus de deux sources (hors périmètre de SPEC-0001).
 - Étendre le tool d'upload aux formats déjà supportés par l'API Superset non
   encore testés (`columnar`/Parquet).
 - Réparer les workers Celery si des fonctionnalités asynchrones deviennent

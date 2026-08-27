@@ -7,7 +7,9 @@ cite l'ADR correspondant plutôt que de le rejouer.
 Nouvelle spec : `.claude/skills/decision-log/trace.sh spec "Titre"`.
 
 <!-- INDEX:début - régénéré par trace.sh index, ne pas éditer à la main -->
-_Aucun document pour l'instant._
+| ID | Spécification | Statut | Auteur |
+|---|---|---|---|
+| [SPEC-0001](SPEC-0001-comparaison-et-reconciliation-de-deux-sources-de-donnees.md) | Comparaison et réconciliation de deux sources de données | brouillon | Claude |
 <!-- INDEX:fin -->
 
 ## À écrire en priorité

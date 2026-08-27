@@ -53,9 +53,15 @@ Superset écoute alors sur http://localhost:8088 (utilisateur `admin`).
   version sous les pieds de l'équipe. Surchargeable par `TAG=... ./superset.sh up`.
 - **Les workers Celery** (`superset-worker`, `superset-worker-beat`) sont connus pour
   échouer sur cette image ; ils sont sans effet sur l'upload synchrone (ADR-0006).
+- **`SUPERSET_LOAD_EXAMPLES=no`** est posé par `superset.sh secrets` : le `docker/.env`
+  d'upstream active les jeux d'exemple, qui chargent des centaines de milliers de lignes
+  sans rapport avec le projet et allongent fortement la première initialisation.
 
 ## Base de données des uploads
 
-La base `uploads` (distincte de la metadata DB `superset`, voir ADR-0004) n'est pas
-créée par cette stack : elle est créée à la demande par le tool d'upload, à partir de
-`SUPERSET_UPLOAD_SQLALCHEMY_URI`.
+La base `uploads` est distincte de la metadata DB `superset` (ADR-0004). Le tool
+d'upload crée la **connexion** côté Superset, mais **pas la base Postgres elle-même** :
+sans elle il échoue sur `Unable to connect to database "uploads"`. `superset.sh up`
+la crée donc si elle manque (pas idempotent rejoué à chaque démarrage), et
+`superset.sh db-uploads` permet de le faire seul. Le nom est déduit de
+`SUPERSET_UPLOAD_SQLALCHEMY_URI` dans le `.env` racine.

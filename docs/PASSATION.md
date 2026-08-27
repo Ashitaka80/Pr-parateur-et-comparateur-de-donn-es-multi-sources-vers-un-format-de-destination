@@ -10,22 +10,32 @@ Le pipeline « préparer un fichier → le pousser dans Superset comme dataset �
 écrit, testé et documenté ; **le cœur annoncé du projet — la comparaison
 multi-sources — n'est pas commencé.**
 
-## Ce qui bloque immédiatement
+## État vérifié le 2026-08-27
 
-**L'outil d'upload n'est pas exécutable en l'état sur cette machine.**
+**La chaîne complète a été validée de bout en bout sur cette machine** : stack démarrée
+depuis `infra/superset/`, image `superset-uploader` construite, CSV de démo (200 lignes)
+uploadé, table `ventes_demo` créée dans la base `uploads` et dataset enregistré dans
+Superset (id 22), tous deux vérifiés en base.
 
-1. **La stack Superset n'est pas démarrée** (`docker ps` ne retourne aucun conteneur),
-   mais elle est désormais **dans le dépôt** (`infra/superset/`, ADR-0010) : plus besoin
-   de recloner quoi que ce soit. Lancer `./infra/superset/superset.sh secrets` puis
-   `./infra/superset/superset.sh up`. Le proxy de la machine est repris automatiquement
-   dans les conteneurs par `secrets` ; le drop-in systemd du daemon docker est déjà en
-   place sur cette machine, et les builds d'image ont besoin de `--build-arg` (CLAUDE.md).
-2. **Deux valeurs manquent dans `.env`** : `SUPERSET_PASSWORD` (vide) et le mot de passe
-   Postgres dans `SUPERSET_UPLOAD_SQLALCHEMY_URI` (placeholder `CHANGEME`). Elles sont
-   générées par `superset.sh secrets`, qui les affiche à reporter.
-   `.claude/skills/project-init/init.sh check` les signale tant que c'est en attente.
-3. **L'image `superset-uploader` est à reconstruire** sur toute machine neuve :
-   `docker build -t superset-uploader:latest .claude/skills/superset-upload/`.
+Sur une **autre** machine, il reste à dérouler :
+
+```bash
+./infra/superset/superset.sh secrets   # génère les mots de passe, les affiche
+./infra/superset/superset.sh up        # première init : plusieurs minutes
+docker build -t superset-uploader:latest \
+  --build-arg HTTP_PROXY="$HTTP_PROXY" --build-arg HTTPS_PROXY="$HTTPS_PROXY" \
+  .claude/skills/superset-upload/
+.claude/skills/project-init/init.sh check   # doit être au vert
+```
+
+## Historique — ce qui bloquait avant le 2026-08-27
+
+1. La stack Superset avait disparu de la machine. Résolu : elle est **dans le dépôt**
+   (`infra/superset/`, ADR-0010), et elle tourne.
+2. Deux valeurs manquaient dans `.env`. Résolu : générées par `superset.sh secrets` et
+   reportées ; `init.sh check` est au vert.
+3. L'image `superset-uploader` restait à construire. Résolu sur cette machine ; à
+   refaire sur toute machine neuve, avec les `--build-arg` de proxy.
 
 ## Où en est le dépôt
 
@@ -33,8 +43,8 @@ multi-sources — n'est pas commencé.**
 |---|---|
 | Skill/tool d'upload vers Superset | Écrit, testé de bout en bout lors d'une session antérieure (CSV de démo, puis fichier INSEE des décès en largeur fixe, 56 493 lignes) |
 | Configuration et secrets (`.env` / `.env.example` / skill `project-init`) | Fait et vérifié |
-| Stack Superset vendorisée (`infra/superset/`) | Fichiers en place, wrapper écrit, compose validé — **jamais démarrée depuis cette machine** |
-| Traçabilité (`docs/`, skill `decision-log`) | Fait, 10 ADR, registre des délégations à jour |
+| Stack Superset vendorisée (`infra/superset/`) | Démarrée et validée de bout en bout |
+| Traçabilité (`docs/`, skill `decision-log`) | Fait, 10 ADR, 4 délégations, registre à jour |
 | Préparation de sources à format non standard | **Ad hoc** : script écrit au cas par cas, jamais généralisé |
 | Comparaison / réconciliation multi-sources | **Pas commencé** |
 | Autres destinations que Superset | Pas commencé |

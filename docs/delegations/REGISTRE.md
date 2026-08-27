@@ -54,13 +54,24 @@ un humain — à ratifier ou corriger) · `révoquée`.
 - **Contrepartie exigée** : à la fin d'une session, **un collègue doit pouvoir prendre
   la suite** — rien d'important ne reste en modifications non committées, les messages
   expliquent le pourquoi, et `docs/PASSATION.md` reflète l'état réel.
-- **Limites** : ne couvre **pas** `git push` vers `origin` (action sortante, à demander),
-  ni la réécriture d'historique déjà publié (`rebase`, `force-push`, `filter-repo`), ni
+- **Limites** : ne couvre **pas** la réécriture d'historique déjà publié (`rebase`, `force-push`, `filter-repo`), ni
   la suppression de branches d'autrui, ni un commit direct sur `main`.
 - **Source** : demande explicite — « Je te délègue la gestion du git et le versionning.
   A toi de voir quand commiter, sachant qu'en fin de session il faut qu'un collègue soit
   en mesure de prendre la suite. »
 - **Trace** : ADR-0009.
+
+### D-0004 — Push vers `origin`
+- **Accordée par** : `user808 <user808@mail.com>`
+- **Le** : 2026-08-27
+- **Statut** : active
+- **Portée** : pousser les branches de travail vers `origin` sans demander à chaque fois.
+  Étend D-0003, qui excluait explicitement cette action sortante.
+- **Limites** : ne couvre **pas** le push sur `main`, ni un `--force` / `--force-with-lease`,
+  ni la publication de contenu qui n'aurait pas été relu (vérifier avant chaque push
+  qu'aucun secret n'entre dans l'historique).
+- **Source** : demande explicite — « Je te délègue désormais le push. »
+- **Trace** : ADR-0009 (workflow git).
 
 ---
 

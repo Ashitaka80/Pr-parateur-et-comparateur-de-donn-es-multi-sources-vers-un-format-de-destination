@@ -75,9 +75,12 @@ appartiennent aux développeurs. Modèle : `docs/specs/TEMPLATE.md`.
 - **`docs/CONTRIBUTEURS.md` ne contient qu'une personne.** Le projet est annoncé comme
   travaillé à plusieurs : chaque développeur doit y ajouter son identité git, sinon les
   ADR qu'il signe ne sont rattachables à personne (`trace.sh check` le signale).
-- **La pull request [#1](https://github.com/Ashitaka80/Pr-parateur-et-comparateur-de-donn-es-multi-sources-vers-un-format-de-destination/pull/1)
-  est ouverte** (`feat/tracabilite-et-configuration` → `main`, 10 commits, 59 fichiers)
-  et attend une relecture. `main` est intacte.
+- **La PR [#1](https://github.com/Ashitaka80/Pr-parateur-et-comparateur-de-donn-es-multi-sources-vers-un-format-de-destination/pull/1)
+  est fusionnée dans `main`** (merge commit `7c2da18`, 10 commits conservés) — sur
+  demande explicite, **sans relecture par un tiers**. Les trois points qu'elle soumettait
+  à un relecteur restent donc ouverts : compléter `docs/CONTRIBUTEURS.md`, écrire
+  `SPEC-0001` avant de coder la comparaison, et décider d'épingler ou non le tag d'image
+  Superset (ADR-0003).
   Point à connaître pour la suite : les jetons **fine-grained** (`github_pat_…`) essayés
   sur ce dépôt échouaient tous en `403 Resource not accessible by personal access token`,
   alors même que le compte avait le rôle *push*. Un jeton **classique** (`ghp_…`) avec

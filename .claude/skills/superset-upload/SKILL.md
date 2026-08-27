@@ -106,11 +106,21 @@ transformation — it only loads what you give it.
 - Auth/connection errors — verify the Superset containers are up:
   `docker ps --filter name=superset` and `curl http://localhost:8088/health`.
 
+## Removing a dataset
+
+`delete_dataset.sh --table-name <name>` removes the Superset dataset registration
+for a table (not the underlying table itself — drop that separately if needed).
+Same Docker/env conventions as `upload.sh`. Used by
+`infra/superset/superset.sh smoke-test` (ADR-0011) to clean up its test table after
+each run.
+
 ## Files
 
 - `Dockerfile` — the `superset-uploader` image (python:3.12-slim + requests).
 - `upload.sh` — the entry point described above; run this, not the script
   directly, unless you have your own Python environment with `requests`.
+- `delete_dataset.sh` — removes a dataset registration by table name (see above).
 - `scripts/superset_client.py` — reusable `SupersetClient` (login, CSRF,
-  database lookup/creation, file upload, dataset lookup).
-- `scripts/upload_to_superset.py` — the CLI the Docker image runs.
+  database lookup/creation, file upload, dataset lookup/delete).
+- `scripts/upload_to_superset.py` — the CLI the Docker image runs for uploads.
+- `scripts/delete_dataset.py` — the CLI the Docker image runs for dataset removal.

@@ -47,24 +47,27 @@ vers un format/outil de destination. La destination actuellement implémentée e
 
 ## Architecture
 
-Deux briques Docker indépendantes, orchestrées séparément :
+Deux briques Docker indépendantes, orchestrées séparément, **toutes deux dans ce
+dépôt** :
 
 ```
-┌─────────────────────────────┐        ┌──────────────────────────────┐
-│   Stack Apache Superset      │        │   Image superset-uploader      │
-│   (/home/user/superset-docker)│        │   (.claude/skills/…)           │
-│                              │        │                                │
-│  superset_app  (UI + API)   │◄───────┤  docker run --rm, une fois     │
-│  superset_db   (Postgres)   │  API   │  par upload                    │
-│  superset_cache (Redis)     │  REST  │  → login, CSRF, POST multipart │
-└─────────────────────────────┘        └──────────────────────────────┘
-        ▲
+┌──────────────────────────────┐        ┌──────────────────────────────┐
+│  Stack Apache Superset       │        │  Image superset-uploader      │
+│  (infra/superset/)           │        │  (.claude/skills/…)           │
+│                              │        │                               │
+│  superset_app  (UI + API)    │◄───────┤  docker run --rm, une fois    │
+│  superset_db   (Postgres)    │  API   │  par upload                   │
+│  superset_cache (Redis)      │  REST  │  → login, CSRF, POST multipart│
+└──────────────────────────────┘        └──────────────────────────────┘
+        ▲          réseau docker « superset_default »
         │ navigateur (http://localhost:8088)
       Humain
 ```
 
 - **Superset** : UI + API REST, backend PostgreSQL dédié (base `uploads`,
-  distincte de la metadata DB de Superset).
+  distincte de la metadata DB de Superset). Les fichiers de déploiement sont
+  vendorisés depuis `apache/superset` dans [`infra/superset/`](infra/superset/) —
+  le dépôt est autonome, voir ADR-0010.
 - **`superset-uploader`** : image Python minimale (`python:3.12-slim` +
   `requests`), jetable — un conteneur par appel. Ne monte que le dossier du
   fichier à uploader (lecture seule, le temps de l'appel) et le fichier
@@ -91,7 +94,8 @@ documentées en détail (avec les correctifs appliqués) dans `CLAUDE.md` :
 
 ## Prérequis
 
-- Docker + Docker Compose (v2, plugin `docker compose`).
+- Docker + Docker Compose (v2, plugin `docker compose`). **Rien d'autre** : aucun
+  Python, aucun outil à installer sur la machine hôte.
 - Un accès réseau sortant (direct ou via proxy) pour télécharger les images et
   paquets pip au premier lancement.
 
@@ -102,12 +106,12 @@ documentées en détail (avec les correctifs appliqués) dans `CLAUDE.md` :
 .claude/skills/project-init/init.sh init
 #    puis renseigner SUPERSET_PASSWORD et l'URI Postgres dans .env
 
-# 1. Démarrer Superset
-cd /home/user/superset-docker
-docker compose -f docker-compose-image-tag.yml up -d
+# 1. Démarrer Superset (depuis la racine du dépôt)
+./infra/superset/superset.sh secrets   # une seule fois par machine
+./infra/superset/superset.sh up
+#    puis reporter dans .env les deux valeurs affichées par « secrets »
 
 # 2. Construire l'image de l'outil d'upload (une fois, ou après modif de scripts/)
-cd "/home/user/Projets/Pr-parateur-et-comparateur-de-donn-es-multi-sources-vers-un-format-de-destination"
 docker build -t superset-uploader:latest .claude/skills/superset-upload/
 
 # 3. Uploader un fichier
@@ -117,8 +121,9 @@ docker build -t superset-uploader:latest .claude/skills/superset-upload/
   --if-exists replace
 ```
 
-Superset est ensuite accessible sur http://localhost:8088 (identifiants dans
-`/home/user/superset-docker/CREDENTIALS.txt`).
+Superset est ensuite accessible sur http://localhost:8088 (utilisateur `admin`,
+mot de passe généré par `superset.sh secrets` et stocké dans
+`infra/superset/docker/.env-local`, non versionné).
 
 ## Configuration
 

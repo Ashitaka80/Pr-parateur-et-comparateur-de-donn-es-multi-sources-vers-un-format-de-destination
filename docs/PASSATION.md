@@ -14,16 +14,16 @@ multi-sources — n'est pas commencé.**
 
 **L'outil d'upload n'est pas exécutable en l'état sur cette machine.**
 
-1. **La stack Superset n'existe plus localement.** `/home/user/superset-docker` est
-   absent, `docker ps` ne retourne aucun conteneur. Docker lui-même est installé
-   (29.7.2) et fonctionnel. Il faut recloner `apache/superset` et relancer
-   `docker compose -f docker-compose-image-tag.yml up -d` — en réappliquant la
-   configuration de proxy décrite dans `CLAUDE.md` (drop-in systemd pour le daemon,
-   variables dans `docker/.env-local` pour les conteneurs, `--build-arg` pour les builds).
+1. **La stack Superset n'est pas démarrée** (`docker ps` ne retourne aucun conteneur),
+   mais elle est désormais **dans le dépôt** (`infra/superset/`, ADR-0010) : plus besoin
+   de recloner quoi que ce soit. Lancer `./infra/superset/superset.sh secrets` puis
+   `./infra/superset/superset.sh up`. Le proxy de la machine est repris automatiquement
+   dans les conteneurs par `secrets` ; le drop-in systemd du daemon docker est déjà en
+   place sur cette machine, et les builds d'image ont besoin de `--build-arg` (CLAUDE.md).
 2. **Deux valeurs manquent dans `.env`** : `SUPERSET_PASSWORD` (vide) et le mot de passe
-   Postgres dans `SUPERSET_UPLOAD_SQLALCHEMY_URI` (placeholder `CHANGEME`). Elles ne
-   pourront être renseignées qu'une fois la stack redéployée, puisqu'elles sont générées
-   à l'installation. `.claude/skills/project-init/init.sh check` les signale.
+   Postgres dans `SUPERSET_UPLOAD_SQLALCHEMY_URI` (placeholder `CHANGEME`). Elles sont
+   générées par `superset.sh secrets`, qui les affiche à reporter.
+   `.claude/skills/project-init/init.sh check` les signale tant que c'est en attente.
 3. **L'image `superset-uploader` est à reconstruire** sur toute machine neuve :
    `docker build -t superset-uploader:latest .claude/skills/superset-upload/`.
 
@@ -33,7 +33,8 @@ multi-sources — n'est pas commencé.**
 |---|---|
 | Skill/tool d'upload vers Superset | Écrit, testé de bout en bout lors d'une session antérieure (CSV de démo, puis fichier INSEE des décès en largeur fixe, 56 493 lignes) |
 | Configuration et secrets (`.env` / `.env.example` / skill `project-init`) | Fait et vérifié |
-| Traçabilité (`docs/`, skill `decision-log`) | Fait, 9 ADR, registre des délégations à jour |
+| Stack Superset vendorisée (`infra/superset/`) | Fichiers en place, wrapper écrit, compose validé — **jamais démarrée depuis cette machine** |
+| Traçabilité (`docs/`, skill `decision-log`) | Fait, 10 ADR, registre des délégations à jour |
 | Préparation de sources à format non standard | **Ad hoc** : script écrit au cas par cas, jamais généralisé |
 | Comparaison / réconciliation multi-sources | **Pas commencé** |
 | Autres destinations que Superset | Pas commencé |

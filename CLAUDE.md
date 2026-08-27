@@ -41,16 +41,25 @@ Voir aussi la mémoire persistante `github_token_reference` (auto-memory Claude)
 
 ## Infrastructure Apache Superset (environnement de dev local)
 
-Superset **ne fait pas partie du dépôt applicatif** : c'est un service tiers installé
-séparément sur la machine, utilisé comme cible pour les futurs tools d'upload.
+Superset reste un **service tiers**, mais ses fichiers de déploiement sont désormais
+**vendorisés dans le dépôt** — l'ancien clone externe `/home/user/superset-docker` a
+disparu de la machine en emportant toute la configuration, rendant le projet non
+reproductible (ADR-0010).
 
-- **Emplacement** : `/home/user/superset-docker` (clone officiel de `apache/superset`,
-  utilisé uniquement pour ses fichiers `docker-compose-image-tag.yml` / `docker/`).
-- **Lancement** : `docker compose -f docker-compose-image-tag.yml up -d` depuis ce dossier.
+- **Emplacement** : `infra/superset/` — `docker-compose-image-tag.yml` et `docker/`
+  repris tels quels d'`apache/superset` (commit noté dans `infra/superset/UPSTREAM`,
+  en-têtes de licence Apache-2.0 conservés).
+- **Lancement** : `./infra/superset/superset.sh secrets` (une fois par machine) puis
+  `./infra/superset/superset.sh up`. Le wrapper **fige le nom de projet compose à
+  `superset`**, donc le réseau docker est toujours `superset_default` — valeur attendue
+  par `upload.sh`, qui s'y attache.
 - **URL** : http://localhost:8088
-- **Identifiants** : générés aléatoirement, stockés dans
-  `/home/user/superset-docker/CREDENTIALS.txt` (permissions 600, non versionné) et dans
-  `docker/.env-local` (secrets : `SUPERSET_SECRET_KEY`, `POSTGRES_PASSWORD`, `ADMIN_PASSWORD`).
+- **Identifiants** : générés par `superset.sh secrets` dans
+  `infra/superset/docker/.env-local` (permissions 600, non versionné ;
+  `SUPERSET_SECRET_KEY`, `POSTGRES_PASSWORD`, `DATABASE_PASSWORD`, `ADMIN_PASSWORD`,
+  variables de proxy). La commande affiche les deux valeurs à reporter dans le `.env`
+  racine. **`docker/.env` (valeurs par défaut d'upstream, sans secret) est lui
+  versionné**, via une exception explicite du `.gitignore`.
 - **Backend metadata DB** : PostgreSQL 17 (conteneur `superset_db`), utilisateur `superset`.
 - **`SUPERSET_LOAD_EXAMPLES=no`** : pas de jeux de données d'exemple chargés, instance propre.
 
@@ -118,7 +127,7 @@ séparément sur la machine, utilisé comme cible pour les futurs tools d'upload
 - **Identifiants et config** dans `.env` à la racine (non versionné, voir `.gitignore`) :
   `SUPERSET_URL` (hostname **interne** au réseau docker, `http://superset_app:8088` —
   nécessaire car le conteneur `superset-uploader` tourne sur ce même réseau
-  `superset-docker_default`), `SUPERSET_PUBLIC_URL` (`http://localhost:8088`, uniquement
+  `superset_default`), `SUPERSET_PUBLIC_URL` (`http://localhost:8088`, uniquement
   pour le lien affiché en fin d'upload, cliquable depuis le navigateur de l'hôte),
   `SUPERSET_USERNAME`, `SUPERSET_PASSWORD`, `SUPERSET_UPLOAD_DATABASE`,
   `SUPERSET_UPLOAD_SQLALCHEMY_URI`.

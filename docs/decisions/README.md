@@ -27,4 +27,5 @@ porte `validation: à confirmer` — elle tient, mais elle attend une ratificati
 | [ADR-0007](ADR-0007-secrets-env-local-et-modele-versionne.md) | Secrets en `.env` local, contrat de configuration versionné en `.env.example` | acceptée | user808 <user808@mail.com> | confirmée |
 | [ADR-0008](ADR-0008-tracabilite-des-decisions-et-delegations.md) | Traçabilité écrite des décisions, délégations et spécifications | acceptée | user808 <user808@mail.com> | confirmée |
 | [ADR-0009](ADR-0009-workflow-git-et-versionnement.md) | Workflow git — branches thématiques, Conventional Commits, passation écrite | acceptée | user808 <user808@mail.com> | confirmée |
+| [ADR-0010](ADR-0010-vendoriser-la-stack-superset.md) | Vendoriser la stack Superset dans le dépôt plutôt que dépendre d'un clone externe | acceptée | user808 <user808@mail.com> | confirmée |
 <!-- INDEX:fin -->

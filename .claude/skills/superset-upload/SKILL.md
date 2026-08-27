@@ -17,8 +17,9 @@ one-off `docker run --rm` on the same docker network as the Superset stack.
 
 ## Prerequisites
 
-- The Superset stack is up (`/home/user/superset-docker`, see this repo's
-  `CLAUDE.md`): `docker compose -f docker-compose-image-tag.yml up -d`.
+- The Superset stack is up. It lives **inside this repo**, in `infra/superset/`
+  (vendored from `apache/superset`): `./infra/superset/superset.sh up`.
+  First time on a machine: `./infra/superset/superset.sh secrets` beforehand.
 - The uploader image is built — **and rebuilt after any edit to `scripts/`**,
   since they're `COPY`'d into the image at build time, not live-mounted:
   ```
@@ -97,11 +98,11 @@ transformation — it only loads what you give it.
   with curl/requests outside this script: the CSRF token must be fetched
   with the *same* cookie-jar/session used for login, and sent back on the
   upload POST via `X-CSRFToken`. `superset_client.py` already handles this.
-- `docker: Error response from daemon: network superset-docker_default not
-  found` — the Superset stack isn't up, or its compose project isn't named
-  `superset-docker` (compose derives the network name from the directory
-  name). Check `docker network ls` and adjust `NETWORK` in `upload.sh` if
-  the Superset install was moved.
+- `docker: Error response from daemon: network superset_default not
+  found` — the Superset stack isn't up. `superset.sh` pins the compose project
+  name to `superset`, so the network is always `superset_default`; compose would
+  otherwise derive it from the directory name. Check `docker network ls`, and set
+  `SUPERSET_NETWORK=<name>` if you run the stack some other way.
 - Auth/connection errors — verify the Superset containers are up:
   `docker ps --filter name=superset` and `curl http://localhost:8088/health`.
 

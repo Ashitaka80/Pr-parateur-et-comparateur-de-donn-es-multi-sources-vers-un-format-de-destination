@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-NETWORK="superset-docker_default"
+NETWORK="${SUPERSET_NETWORK:-superset_default}"
 IMAGE="superset-uploader:latest"
 
 file=""

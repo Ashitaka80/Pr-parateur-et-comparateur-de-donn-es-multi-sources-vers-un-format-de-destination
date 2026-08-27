@@ -21,6 +21,27 @@ récente d'upstream, cloner `apache/superset` dans un dossier temporaire et diff
 
 ## Démarrage
 
+Sur une machine neuve, une seule commande (ADR-0011) :
+
+```bash
+./infra/superset/superset.sh bootstrap
+```
+
+Elle enchaîne : amorce le `.env` racine si absent, génère les secrets si absents,
+démarre la stack, **attend qu'elle soit healthy**, reporte automatiquement
+`SUPERSET_PASSWORD` et `SUPERSET_UPLOAD_SQLALCHEMY_URI` dans le `.env` racine (sans
+écraser une valeur déjà renseignée), construit l'image `superset-uploader`, puis
+vérifie la configuration. Rejouable sans effet si une étape est déjà faite.
+
+Vérifier ensuite que la chaîne fonctionne réellement, avec un fichier de test uploadé
+puis nettoyé :
+
+```bash
+./infra/superset/superset.sh smoke-test
+```
+
+Étape par étape, ou pour piloter la stack une fois debout :
+
 ```bash
 ./infra/superset/superset.sh secrets   # une seule fois : génère docker/.env-local
 ./infra/superset/superset.sh up        # démarre (première init : plusieurs minutes)
@@ -28,8 +49,8 @@ récente d'upstream, cloner `apache/superset` dans un dossier temporaire et diff
 ```
 
 `secrets` affiche les deux valeurs à reporter dans le `.env` à la racine du dépôt
-(`SUPERSET_PASSWORD` et `SUPERSET_UPLOAD_SQLALCHEMY_URI`). Vérifier ensuite avec
-`.claude/skills/project-init/init.sh check`.
+(`SUPERSET_PASSWORD` et `SUPERSET_UPLOAD_SQLALCHEMY_URI`) si `bootstrap` n'a pas été
+utilisé. Vérifier ensuite avec `.claude/skills/project-init/init.sh check`.
 
 Superset écoute alors sur http://localhost:8088 (utilisateur `admin`).
 

@@ -187,3 +187,6 @@ class SupersetClient:
         )
         result = resp.json()
         return result["result"][0] if result["count"] else None
+
+    def delete_dataset(self, dataset_id: int) -> None:
+        self._request("DELETE", f"/api/v1/dataset/{dataset_id}")

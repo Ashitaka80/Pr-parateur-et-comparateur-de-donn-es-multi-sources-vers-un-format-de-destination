@@ -101,20 +101,23 @@ documentées en détail (avec les correctifs appliqués) dans `CLAUDE.md` :
 
 ## Démarrage
 
+Sur une machine neuve, deux commandes (ADR-0011) suffisent :
+
 ```bash
-# 0. Créer la configuration locale (.env) à partir du modèle versionné
-.claude/skills/project-init/init.sh init
-#    puis renseigner SUPERSET_PASSWORD et l'URI Postgres dans .env
+# 1. Configure tout : .env, secrets, stack Superset, image de l'outil d'upload
+./infra/superset/superset.sh bootstrap
 
-# 1. Démarrer Superset (depuis la racine du dépôt)
-./infra/superset/superset.sh secrets   # une seule fois par machine
-./infra/superset/superset.sh up
-#    puis reporter dans .env les deux valeurs affichées par « secrets »
+# 2. Vérifie que la chaîne fonctionne réellement (upload d'un fichier de test,
+#    vérification en base, nettoyage)
+./infra/superset/superset.sh smoke-test
+```
 
-# 2. Construire l'image de l'outil d'upload (une fois, ou après modif de scripts/)
-docker build -t superset-uploader:latest .claude/skills/superset-upload/
+`bootstrap` est idempotent : rejouable sans effet si une étape est déjà faite, et ne
+réécrit jamais une valeur déjà renseignée à la main dans `.env`.
 
-# 3. Uploader un fichier
+Puis, pour un vrai fichier :
+
+```bash
 .claude/skills/superset-upload/upload.sh \
   --file mes_donnees.csv \
   --table-name ma_table \
@@ -124,6 +127,11 @@ docker build -t superset-uploader:latest .claude/skills/superset-upload/
 Superset est ensuite accessible sur http://localhost:8088 (utilisateur `admin`,
 mot de passe généré par `superset.sh secrets` et stocké dans
 `infra/superset/docker/.env-local`, non versionné).
+
+Détail étape par étape (ce que fait `bootstrap`), utile en cas de problème sur une
+étape précise : `.claude/skills/project-init/init.sh init` (config), `./infra/superset/superset.sh secrets`
+puis `up` (stack), `docker build -t superset-uploader:latest .claude/skills/superset-upload/`
+(image de l'outil d'upload).
 
 ## Configuration
 

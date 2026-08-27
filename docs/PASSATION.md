@@ -12,21 +12,37 @@ multi-sources — n'est pas commencé.**
 
 ## État vérifié le 2026-08-27
 
-**La chaîne complète a été validée de bout en bout sur cette machine** : stack démarrée
-depuis `infra/superset/`, image `superset-uploader` construite, CSV de démo (200 lignes)
-uploadé, table `ventes_demo` créée dans la base `uploads` et dataset enregistré dans
-Superset (id 22), tous deux vérifiés en base.
+**La chaîne complète a été validée de bout en bout sur cette machine**, deux fois : une
+première fois à la main (stack démarrée depuis `infra/superset/`, image
+`superset-uploader` construite, CSV de démo 200 lignes uploadé, table `ventes_demo`
+créée puis nettoyée), puis via les commandes `bootstrap`/`smoke-test` ajoutées en fin
+de session (ADR-0011, voir plus bas) — upload d'un fichier de 10 lignes, vérifié en
+base, nettoyé automatiquement.
 
 Sur une **autre** machine, il reste à dérouler :
 
 ```bash
-./infra/superset/superset.sh secrets   # génère les mots de passe, les affiche
-./infra/superset/superset.sh up        # première init : plusieurs minutes
-docker build -t superset-uploader:latest \
-  --build-arg HTTP_PROXY="$HTTP_PROXY" --build-arg HTTPS_PROXY="$HTTPS_PROXY" \
-  .claude/skills/superset-upload/
-.claude/skills/project-init/init.sh check   # doit être au vert
+./infra/superset/superset.sh bootstrap     # .env, secrets, stack, image — idempotent
+./infra/superset/superset.sh smoke-test    # upload d'un fichier de test, vérifie, nettoie
 ```
+
+Le report manuel des deux valeurs de `superset.sh secrets` dans le `.env` racine — qui
+figurait ici — n'est plus nécessaire : `bootstrap` le fait (sans écraser une valeur déjà
+renseignée à la main). La séquence détaillée reste disponible dans `infra/superset/README.md`
+si une étape précise doit être rejouée seule.
+
+## Point critique — le push git n'est plus automatique en pratique
+
+**Le développeur doit lancer lui-même chaque push, malgré la délégation D-0004**
+(ADR-0012). Un script dédié existe : `scripts/git-push.sh [branche]` (authentification
+via credential helper git scopé à l'invocation, token jamais exposé en argv ni dans
+`.git/config`, refuse tout push direct sur `main`). Mais **le classificateur de sécurité
+du mode automatique bloque l'action `git push` elle-même quand Claude l'exécute, quelle
+que soit la méthode d'authentification** — constaté en session, ce n'est pas un bug du
+script. Lancer avec `! scripts/git-push.sh` depuis la CLI Claude Code. Une règle de
+permission ciblée (`Bash(.../scripts/git-push.sh:*)`, dans `.claude/settings.json`) peut
+lever ce blocage pour Claude, mais **Claude ne peut pas se l'accorder lui-même**
+(tenté, également refusé) — c'est au développeur de l'ajouter s'il le souhaite.
 
 ## Historique — ce qui bloquait avant le 2026-08-27
 
@@ -44,7 +60,7 @@ docker build -t superset-uploader:latest \
 | Skill/tool d'upload vers Superset | Écrit, testé de bout en bout lors d'une session antérieure (CSV de démo, puis fichier INSEE des décès en largeur fixe, 56 493 lignes) |
 | Configuration et secrets (`.env` / `.env.example` / skill `project-init`) | Fait et vérifié |
 | Stack Superset vendorisée (`infra/superset/`) | Démarrée et validée de bout en bout |
-| Traçabilité (`docs/`, skill `decision-log`) | Fait, 10 ADR, 4 délégations, registre à jour |
+| Traçabilité (`docs/`, skill `decision-log`) | Fait, 12 ADR, 4 délégations, registre à jour |
 | Préparation de sources à format non standard | **Ad hoc** : script écrit au cas par cas, jamais généralisé |
 | Comparaison / réconciliation multi-sources | **Pas commencé** |
 | Autres destinations que Superset | Pas commencé |

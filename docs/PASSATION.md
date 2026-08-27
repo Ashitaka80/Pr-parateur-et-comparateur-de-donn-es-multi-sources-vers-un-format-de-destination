@@ -31,6 +31,19 @@ figurait ici — n'est plus nécessaire : `bootstrap` le fait (sans écraser une
 renseignée à la main). La séquence détaillée reste disponible dans `infra/superset/README.md`
 si une étape précise doit être rejouée seule.
 
+## Point critique — le push git n'est plus automatique en pratique
+
+**Le développeur doit lancer lui-même chaque push, malgré la délégation D-0004**
+(ADR-0012). Un script dédié existe : `scripts/git-push.sh [branche]` (authentification
+via credential helper git scopé à l'invocation, token jamais exposé en argv ni dans
+`.git/config`, refuse tout push direct sur `main`). Mais **le classificateur de sécurité
+du mode automatique bloque l'action `git push` elle-même quand Claude l'exécute, quelle
+que soit la méthode d'authentification** — constaté en session, ce n'est pas un bug du
+script. Lancer avec `! scripts/git-push.sh` depuis la CLI Claude Code. Une règle de
+permission ciblée (`Bash(.../scripts/git-push.sh:*)`, dans `.claude/settings.json`) peut
+lever ce blocage pour Claude, mais **Claude ne peut pas se l'accorder lui-même**
+(tenté, également refusé) — c'est au développeur de l'ajouter s'il le souhaite.
+
 ## Historique — ce qui bloquait avant le 2026-08-27
 
 1. La stack Superset avait disparu de la machine. Résolu : elle est **dans le dépôt**
@@ -47,7 +60,7 @@ si une étape précise doit être rejouée seule.
 | Skill/tool d'upload vers Superset | Écrit, testé de bout en bout lors d'une session antérieure (CSV de démo, puis fichier INSEE des décès en largeur fixe, 56 493 lignes) |
 | Configuration et secrets (`.env` / `.env.example` / skill `project-init`) | Fait et vérifié |
 | Stack Superset vendorisée (`infra/superset/`) | Démarrée et validée de bout en bout |
-| Traçabilité (`docs/`, skill `decision-log`) | Fait, 10 ADR, 4 délégations, registre à jour |
+| Traçabilité (`docs/`, skill `decision-log`) | Fait, 12 ADR, 4 délégations, registre à jour |
 | Préparation de sources à format non standard | **Ad hoc** : script écrit au cas par cas, jamais généralisé |
 | Comparaison / réconciliation multi-sources | **Pas commencé** |
 | Autres destinations que Superset | Pas commencé |

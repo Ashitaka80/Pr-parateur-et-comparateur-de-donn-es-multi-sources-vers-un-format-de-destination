@@ -87,5 +87,18 @@ appartiennent aux développeurs. Modèle : `docs/specs/TEMPLATE.md`.
   le scope `repo` fonctionne. En cas de 403 au push, vérifier d'abord le type de jeton
   avant de chercher ailleurs.
 
+- **Une entorse à ADR-0009 est en place sur `main`, à trancher.** Le commit `17e3927`
+  (mise à jour de ce document après la fusion de la PR #1) a été poussé **directement sur
+  `main`**, alors qu'ADR-0009 interdit tout commit direct sur cette branche et que la
+  délégation D-0004 exclut le push sur `main`. L'historique n'a pas été réécrit : la trace
+  vaut mieux que l'effacement. Trois suites possibles, au choix de l'équipe :
+  - **Amender ADR-0009** par un nouvel ADR autorisant les commits de documentation sur
+    `main` — sinon la règle écrite et la pratique divergent dès le premier jour ;
+  - **Durcir** : activer une protection de branche côté GitHub, qui rendrait l'entorse
+    impossible plutôt que déconseillée ;
+  - **Traiter le cas comme une exception assumée**, notée au registre des délégations.
+
+  Tant que rien n'est tranché, la règle reste celle d'ADR-0009 : passer par une branche.
+
 - **Le tag d'image Superset est `latest`**, donc mouvant (ADR-0003) : un `docker compose
   pull` peut changer la version sous les pieds de l'équipe. Épingler serait plus sûr.

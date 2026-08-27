@@ -1,4 +1,12 @@
+# Secrets locaux (jamais versionnés) — le modèle versionné est .env.example
 .env
+.env.local
+
+# Exception : docker/.env de la stack Superset est un fichier de valeurs par défaut
+# venu d'upstream, sans aucun secret. Les secrets vivent dans .env-local, ci-dessous.
+!infra/superset/docker/.env
+infra/superset/docker/.env-local
+
 .venv/
 __pycache__/
 *.pyc

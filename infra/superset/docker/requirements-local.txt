@@ -1,0 +1,4 @@
+# Dépendances installées dans TOUS les conteneurs Superset au démarrage.
+# psycopg2-binary : le bootstrap saute volontairement les requirements Postgres
+# pour les workers, qui échouent alors sur ModuleNotFoundError. Voir ADR-0006.
+psycopg2-binary

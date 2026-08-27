@@ -72,14 +72,13 @@ appartiennent aux développeurs. Modèle : `docs/specs/TEMPLATE.md`.
 - **`docs/CONTRIBUTEURS.md` ne contient qu'une personne.** Le projet est annoncé comme
   travaillé à plusieurs : chaque développeur doit y ajouter son identité git, sinon les
   ADR qu'il signe ne sont rattachables à personne (`trace.sh check` le signale).
-- **Rien n'est encore poussé sur `origin`.** Le push est délégué (D-0004), mais il
-  échoue : `remote: Permission to Ashitaka80/… denied to Al-Garoth`, et l'API répond
-  `Resource not accessible by personal access token`. Le `GITHUB_TOKEN` du `.env` est un
-  jeton **fine-grained** appartenant au compte `Al-Garoth`, qui a bien le rôle *push* sur
-  le dépôt mais dont le jeton ne porte pas la permission **Contents: Read and write**.
-  À corriger côté GitHub (Settings → Developer settings → Personal access tokens →
-  Fine-grained → ce jeton → Repository permissions → Contents : Read and write, en
-  vérifiant que le dépôt figure bien dans son périmètre). Le travail est committé
-  localement sur la branche `feat/tracabilite-et-configuration`.
+- **La branche `feat/tracabilite-et-configuration` est poussée sur `origin`**, elle
+  n'est pas encore fusionnée dans `main` et aucune pull request n'est ouverte.
+  Point à connaître pour la suite : les jetons **fine-grained** (`github_pat_…`) essayés
+  sur ce dépôt échouaient tous en `403 Resource not accessible by personal access token`,
+  alors même que le compte avait le rôle *push*. Un jeton **classique** (`ghp_…`) avec
+  le scope `repo` fonctionne. En cas de 403 au push, vérifier d'abord le type de jeton
+  avant de chercher ailleurs.
+
 - **Le tag d'image Superset est `latest`**, donc mouvant (ADR-0003) : un `docker compose
   pull` peut changer la version sous les pieds de l'équipe. Épingler serait plus sûr.

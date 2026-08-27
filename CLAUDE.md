@@ -79,19 +79,27 @@ séparément sur la machine, utilisé comme cible pour les futurs tools d'upload
 ## Skill / tool d'upload vers Superset (fait)
 
 - **Skill Claude Code** : `.claude/skills/superset-upload/SKILL.md`.
-- **Tool réutilisable** : `.claude/skills/superset-upload/scripts/superset_client.py`
-  (client REST : login, CSRF, gestion des connexions "Database", upload de fichier) et
-  `.../scripts/upload_to_superset.py` (CLI). Dépendance unique : `requests`
-  (venv dédié au projet dans `.venv/`, séparé du venv Superset lui-même).
+- **100% Docker, aucun Python côté hôte.** Le tool tourne dans une image dédiée
+  `superset-uploader` (`Dockerfile` du skill : `python:3.12-slim` + `requests`), lancée en
+  `docker run --rm` par appel via `.claude/skills/superset-upload/upload.sh`. Ce wrapper ne
+  monte que le dossier parent du fichier `--file` (lecture seule, le temps de l'appel) plus
+  `.env` — rien d'autre du disque hôte n'est exposé, et le montage ne survit pas à l'appel.
+  **Les scripts sont `COPY`'d dans l'image au build** (pas montés en live) : après toute
+  modification de `scripts/`, il faut reconstruire
+  (`docker build -t superset-uploader:latest .claude/skills/superset-upload/`).
 - **Base de données cible** : une base Postgres `uploads` a été créée dans le conteneur
   `superset_db` (distincte de la metadata DB `superset`), enregistrée dans Superset comme
   connexion `uploads` avec `allow_file_upload=true` et
   `schemas_allowed_for_file_upload: ["public"]`.
 - **Identifiants et config** dans `.env` à la racine (non versionné, voir `.gitignore`) :
-  `SUPERSET_URL`, `SUPERSET_USERNAME`, `SUPERSET_PASSWORD`, `SUPERSET_UPLOAD_DATABASE`,
+  `SUPERSET_URL` (hostname **interne** au réseau docker, `http://superset_app:8088` —
+  nécessaire car le conteneur `superset-uploader` tourne sur ce même réseau
+  `superset-docker_default`), `SUPERSET_PUBLIC_URL` (`http://localhost:8088`, uniquement
+  pour le lien affiché en fin d'upload, cliquable depuis le navigateur de l'hôte),
+  `SUPERSET_USERNAME`, `SUPERSET_PASSWORD`, `SUPERSET_UPLOAD_DATABASE`,
   `SUPERSET_UPLOAD_SQLALCHEMY_URI`.
-- **Testé de bout en bout** : upload d'un CSV de démo (`demo_ventes`) via le CLI → table
-  Postgres créée → dataset Superset enregistré et interrogeable (id=2 dans cette instance).
+- **Testé de bout en bout** : upload d'un CSV de démo (`demo_ventes`) via `upload.sh` → table
+  Postgres créée → dataset Superset enregistré et interrogeable.
 - Point d'API clé découvert par lecture du code source Superset (pas de doc publique claire
   dessus) : `POST /api/v1/database/{id}/upload/`, payload `multipart/form-data` avec
   `type` (csv/excel/columnar), `table_name`, `file`, `already_exists` (fail/replace/append),
@@ -100,14 +108,18 @@ séparément sur la machine, utilisé comme cible pour les futurs tools d'upload
   `400 CSRF session token is missing`), et le `schema` doit correspondre à
   `schemas_allowed_for_file_upload` sur la connexion sinon
   `Database schema is not allowed for csv uploads`.
-- **Pourquoi un venv côté hôte plutôt que d'exécuter dans le conteneur Superset** (qui a déjà
-  `requests` installé) : ça a été tenté (`docker exec superset_app python ...` avec le script
-  monté en volume) mais ça nécessite de monter des chemins hôte dans le conteneur (script,
-  `.env`, fichier de données à uploader) — une exposition qui a été bloquée par les
-  garde-fous de sécurité de l'environnement dès qu'on a élargi le montage au-delà du seul
-  dossier de scripts. Le venv léger (une dépendance, `requests`) évite ce compromis et permet
-  d'uploader n'importe quel fichier du disque hôte sans réflexion supplémentaire ; c'est
-  l'approche retenue.
+- **Historique de conception (venv → docker exec → image dédiée)** : un venv hôte a d'abord
+  été utilisé (une dépendance, `requests`), fonctionnel mais jugé incohérent avec un projet
+  "tout Docker" (retour utilisateur explicite). Piste suivante, `docker exec` dans le
+  conteneur `superset_app` déjà vivant (qui a `requests`) : rejetée, car elle aurait nécessité
+  de monter des chemins hôte (script, `.env`, fichier à uploader) dans un conteneur de service
+  **persistant** — les garde-fous de sécurité de l'environnement ont bloqué l'élargissement de
+  ce montage au-delà d'un seul dossier de scripts. Solution retenue : une image **dédiée et
+  jetable** (`superset-uploader`), avec un montage **minimal et éphémère** (un seul dossier,
+  le temps d'un `docker run --rm`) — élimine le Python hôte sans le compromis de sécurité du
+  montage large sur un conteneur permanent. Note technique annexe : `docker build`
+  n'hérite pas du proxy configuré au niveau du daemon (voir point 6) — passer
+  `--build-arg HTTP_PROXY=...`/`HTTPS_PROXY=...` pour les étapes `RUN pip install`.
 
 ## Prochaines étapes possibles
 

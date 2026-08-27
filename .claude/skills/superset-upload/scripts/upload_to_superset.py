@@ -67,6 +67,10 @@ def main() -> int:
     args = build_arg_parser().parse_args()
 
     base_url = args.url or os.environ.get("SUPERSET_URL", "http://localhost:8088")
+    # SUPERSET_URL may be an in-container hostname (e.g. http://superset_app:8088)
+    # that only resolves on the docker network; SUPERSET_PUBLIC_URL, if set, is
+    # what to print for a human to open in their own browser.
+    public_url = os.environ.get("SUPERSET_PUBLIC_URL", base_url)
     username = args.username or os.environ.get("SUPERSET_USERNAME", "admin")
     password = args.password or os.environ.get("SUPERSET_PASSWORD")
     database_name = args.database or os.environ.get("SUPERSET_UPLOAD_DATABASE", "uploads")
@@ -106,7 +110,7 @@ def main() -> int:
 
         dataset = client.find_dataset(args.table_name)
         if dataset:
-            print(f"Dataset available: {base_url}/explore/?datasource_type=table&datasource_id={dataset['id']}")
+            print(f"Dataset available: {public_url}/explore/?datasource_type=table&datasource_id={dataset['id']}")
         return 0
     except SupersetAPIError as exc:
         print(f"error: {exc}", file=sys.stderr)

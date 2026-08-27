@@ -98,12 +98,16 @@ documentées en détail (avec les correctifs appliqués) dans `CLAUDE.md` :
 ## Démarrage
 
 ```bash
+# 0. Créer la configuration locale (.env) à partir du modèle versionné
+.claude/skills/project-init/init.sh init
+#    puis renseigner SUPERSET_PASSWORD et l'URI Postgres dans .env
+
 # 1. Démarrer Superset
 cd /home/user/superset-docker
 docker compose -f docker-compose-image-tag.yml up -d
 
 # 2. Construire l'image de l'outil d'upload (une fois, ou après modif de scripts/)
-cd /home/user/Documents/TP_Claude
+cd "/home/user/Projets/Pr-parateur-et-comparateur-de-donn-es-multi-sources-vers-un-format-de-destination"
 docker build -t superset-uploader:latest .claude/skills/superset-upload/
 
 # 3. Uploader un fichier
@@ -118,7 +122,11 @@ Superset est ensuite accessible sur http://localhost:8088 (identifiants dans
 
 ## Configuration
 
-Toute la config sensible/environnement vit dans `.env` à la racine (non versionné) :
+Toute la config sensible/environnement vit dans `.env` à la racine, **non versionné**.
+Sa contrepartie versionnée est **`.env.example`** : mêmes clés, aucun secret, avec
+le rôle de chaque variable et où trouver sa valeur. Le skill `project-init` gère
+les deux (`init` pour amorcer, `check` pour auditer, `sync` après ajout d'une
+variable) — voir `.claude/skills/project-init/SKILL.md`.
 
 | Variable | Rôle |
 |---|---|
@@ -163,3 +171,17 @@ réel, volumineux, et dans un format non trivial.
 Historique détaillé des décisions techniques, bugs rencontrés et correctifs :
 voir [`CLAUDE.md`](./CLAUDE.md). Documentation de l'outil d'upload Superset
 (usage, dépannage) : voir [`.claude/skills/superset-upload/SKILL.md`](./.claude/skills/superset-upload/SKILL.md).
+
+## Traçabilité des décisions
+
+Plusieurs développeurs travaillent sur ce dépôt. Les choix d'architecture, les
+spécifications et les autorisations accordées à Claude Code sont tracés dans
+[`docs/`](docs/README.md), avec attribution nominative :
+
+| Dossier | Contenu |
+|---|---|
+| [`docs/decisions/`](docs/decisions/) | ADR — une décision par fichier, immuable, avec son décideur |
+| [`docs/delegations/`](docs/delegations/REGISTRE.md) | Ce que Claude peut décider seul, et ce qui est tranché définitivement |
+| [`docs/specs/`](docs/specs/) | Spécifications fonctionnelles et techniques |
+
+Outillage : `.claude/skills/decision-log/trace.sh` (`adr`, `spec`, `index`, `check`, `list`).

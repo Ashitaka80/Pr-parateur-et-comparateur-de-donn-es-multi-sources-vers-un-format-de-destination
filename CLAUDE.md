@@ -4,6 +4,30 @@ Projet : préparer et comparer des données issues de plusieurs sources, puis le
 vers un format/outil de destination. La destination actuellement ciblée est **Apache Superset**
 (visualisation / BI), via des **skills et tools Claude Code** dédiés à l'ajout de données.
 
+## Règle de travail — décisions et délégations (à lire en premier)
+
+Plusieurs développeurs travaillent sur ce dépôt. La traçabilité vit dans
+[`docs/`](docs/README.md) et **prime sur ce fichier pour le « pourquoi » et le « qui »** :
+
+- [`docs/decisions/`](docs/decisions/) — un ADR par décision structurante, attribué à
+  une personne nommée. `CLAUDE.md` ne rejoue pas l'argumentaire, il cite l'ADR.
+- [`docs/delegations/REGISTRE.md`](docs/delegations/REGISTRE.md) — **à consulter avant
+  de poser une question à un développeur.** Il liste ce que Claude peut décider seul
+  (`D-XXXX`) et ce qui a été tranché une fois pour toutes (`DP-XXXX`). Son but explicite
+  est qu'une même question ne soit pas reposée d'une session à l'autre.
+- [`docs/specs/`](docs/specs/) — spécifications fonctionnelles et techniques.
+
+Deux obligations, outillées par le skill `.claude/skills/decision-log/` :
+
+1. **Toute décision structurante donne lieu à un ADR**, avant ou juste après sa mise en
+   œuvre — jamais « plus tard ».
+2. **Toute autorisation accordée par un développeur est inscrite au registre dans la
+   session où elle est donnée.** Claude n'est jamais `décideur` d'un ADR ; une décision
+   prise sans validation humaine porte `validation: à confirmer` et reste en dette.
+
+`.claude/skills/decision-log/trace.sh check` vérifie le respect de ces règles ;
+`trace.sh list` affiche les points en attente de ratification.
+
 ## État du dépôt
 
 Le dépôt GitHub distant (`Ashitaka80/Pr-parateur-et-comparateur-de-donn-es-multi-sources...`)
@@ -128,3 +152,33 @@ séparément sur la machine, utilisé comme cible pour les futurs tools d'upload
   l'upload, en pandas, avant d'appeler `upload_to_superset.py`.
 - Réparer `superset-worker` / `superset-worker-beat` si des fonctionnalités async deviennent
   nécessaires (voir point 7 ci-dessus).
+
+## Configuration locale et secrets (skill `project-init`)
+
+Deux fichiers à la racine, avec un partage des rôles strict :
+
+- **`.env`** — valeurs réelles, permissions `600`, **jamais versionné** (`.gitignore`).
+- **`.env.example`** — **versionné**, mêmes clés, aucun secret : uniquement le rôle de
+  chaque variable, sa valeur par défaut si elle en a une, et où trouver la vraie valeur.
+  C'est le contrat de configuration du projet : on peut cloner le dépôt et savoir quoi
+  renseigner sans qu'aucun secret n'ait transité par git.
+
+Le skill `.claude/skills/project-init/` outille ce cycle en bash pur (rien sur l'hôte) :
+`init.sh init` (amorce `.env` depuis le modèle, sans jamais écraser), `check` (audit,
+sortie != 0 si problème), `doctor` (audit + corrige permissions / `.gitignore` / clés
+manquantes), `sync` (propage dans `.env` les clés nouvellement ajoutées au modèle).
+
+Points vérifiés par `check` qui valent d'être connus :
+
+- `.env` non suivi par git **et absent de l'historique** (`git log --all -- .env`) : un
+  fichier retiré de l'index reste dans les objets git, les secrets sont alors à révoquer.
+- Aucune valeur d'une clé sensible (`*PASSWORD*`, `*TOKEN*`, `*SECRET*`, `*KEY*`)
+  identique entre `.env` et `.env.example` — détecte un vrai secret recopié dans le modèle.
+- Le mot-clé **`REQUIS`** dans le bloc de commentaires précédant une clé de `.env.example`
+  la rend bloquante si elle est vide côté `.env`. C'est le mécanisme utilisé pour
+  `SUPERSET_PASSWORD`, seule variable sans défaut dans `upload_to_superset.py`.
+- **Valeurs sans guillemets.** Le parseur `.env` de `upload_to_superset.py` fait un simple
+  `partition("=")` puis `os.environ.setdefault(...)` sans retirer les guillemets :
+  `SUPERSET_PASSWORD="x"` s'authentifierait avec la valeur `"x"`. Les variables `GITHUB_*`
+  préexistantes sont quotées (elles ne passent pas par ce parseur) ; les `SUPERSET_*` ne
+  doivent pas l'être.

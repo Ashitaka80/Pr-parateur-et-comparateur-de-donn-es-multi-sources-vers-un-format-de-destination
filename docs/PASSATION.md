@@ -48,7 +48,7 @@ docker build -t superset-uploader:latest \
 | Préparation de sources à format non standard | **Ad hoc** : script écrit au cas par cas, jamais généralisé |
 | Comparaison / réconciliation multi-sources | **Pas commencé** |
 | Autres destinations que Superset | Pas commencé |
-| Workers Celery Superset | Volontairement arrêtés (ADR-0006) |
+| Workers Celery Superset | Jamais démarrés par `superset.sh up` (bug amont, ADR-0006) ; `WITH_WORKERS=1` pour forcer |
 
 ## Par où commencer
 
@@ -56,9 +56,12 @@ docker build -t superset-uploader:latest \
    pas être rouvert (pas de Python sur l'hôte, services tiers en Docker, secrets hors git).
 2. **Lire `docs/decisions/`** pour le pourquoi de l'architecture. `CLAUDE.md` complète
    avec les pièges d'exploitation (proxy, mots de passe Postgres, bugs d'image amont).
-3. **Remonter l'environnement** : points 1 à 3 de « Ce qui bloque » ci-dessus.
+3. **Remonter l'environnement** : voir le bloc de commandes ci-dessus.
 4. **Vérifier** : `.claude/skills/project-init/init.sh check` et
    `.claude/skills/decision-log/trace.sh check` doivent être au vert.
+5. **En fin de session** : `.claude/skills/session-close/close.sh` doit sortir en 0 —
+   il vérifie que rien ne reste en local, que ce document est à jour, et liste les
+   décisions en attente de validation.
 
 ## Prochaine action recommandée
 

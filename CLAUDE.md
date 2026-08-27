@@ -30,14 +30,20 @@ Deux obligations, outillées par le skill `.claude/skills/decision-log/` :
 
 ## État du dépôt
 
-Le dépôt GitHub distant (`Ashitaka80/Pr-parateur-et-comparateur-de-donn-es-multi-sources...`)
-était vide au clonage. Ce fichier et l'infrastructure Superset décrite ci-dessous sont les
-premiers éléments mis en place.
+L'état d'avancement réel, les points bloquants et la marche à suivre pour reprendre le
+travail vivent dans **[`docs/PASSATION.md`](docs/PASSATION.md)** — c'est le document à
+lire en premier, et à mettre à jour en fin de session (D-0003).
 
 ## Authentification GitHub
 
-Le token d'authentification git (`GITHUB_TOKEN`) est dans `.env` à la racine de ce repo.
-Voir aussi la mémoire persistante `github_token_reference` (auto-memory Claude).
+Le token d'authentification git (`GITHUB_TOKEN`) est dans `.env` à la racine de ce repo
+(voir `.env.example` pour la liste complète des variables).
+
+**Utiliser un token classique (`ghp_…`, scope `repo`).** Les tokens *fine-grained*
+(`github_pat_…`) essayés sur ce dépôt échouent tous au push avec
+`403 Resource not accessible by personal access token`, alors même que l'API confirme
+le rôle *push* du compte sur le dépôt. Devant un 403 au push, vérifier d'abord le type
+de token avant de chercher ailleurs.
 
 ## Infrastructure Apache Superset (environnement de dev local)
 
@@ -63,51 +69,47 @@ reproductible (ADR-0010).
 - **Backend metadata DB** : PostgreSQL 17 (conteneur `superset_db`), utilisateur `superset`.
 - **`SUPERSET_LOAD_EXAMPLES=no`** : pas de jeux de données d'exemple chargés, instance propre.
 
-### Décisions / historique
+### Pièges d'exploitation
 
-1. **Tentative pip (venv) abandonnée.** Une installation via `pip install apache-superset`
-   dans un venv (`/home/user/superset/venv`) a été faite en premier et fonctionnait
-   (après contournement d'un bug de compatibilité `flask-caching` 2.5.0 en downgradant
-   vers `flask-caching==2.1.0` — `SupersetMetastoreCache` ne supporte pas le kwarg
-   `ignore_delete_many_errors` introduit par les versions récentes). Cette approche a été
-   abandonnée sur demande explicite au profit de Docker, jugé plus proche d'un déploiement
-   réaliste et plus simple à maintenir/réinitialiser. Le venv a été arrêté (process gunicorn tué)
-   mais pas supprimé.
-2. **Docker nécessitait un accès root** (`docker.io`, `docker-compose-plugin`) installés
-   manuellement par l'utilisateur via `sudo apt install` (pas d'accès sudo interactif possible
-   depuis les commandes lancées par Claude Code — pas de TTY pour le mot de passe).
-3. **Le daemon Docker ne récupérait pas les images** (timeout vers `registry-1.docker.io` /
-   `apachesuperset.docker.scarf.sh`) car le réseau de la machine impose un proxy HTTP
-   (`http://proxy.pipo.land:3128/`, visible dans l'environnement shell via `HTTPS_PROXY`)
-   que **systemd/dockerd n'hérite pas automatiquement** de l'environnement utilisateur.
-   Corrigé en ajoutant un drop-in systemd :
-   `/etc/systemd/system/docker.service.d/http-proxy.conf` (variables `HTTP_PROXY`/`HTTPS_PROXY`/
-   `NO_PROXY`), suivi de `systemctl daemon-reload && systemctl restart docker`.
-4. Image Superset utilisée : `TAG=latest` (image de prod, pas `latest-dev`) via
-   `docker-compose-image-tag.yml`, qui pull des images pré-construites plutôt que de builder
-   depuis les sources (plus rapide, pas besoin du frontend dev server).
-5. **Deux variables distinctes contrôlent le mot de passe Postgres** dans ce docker-compose :
-   `POSTGRES_PASSWORD` (mot de passe réellement défini par le conteneur `db` pour l'utilisateur
-   `superset`) et `DATABASE_PASSWORD` (mot de passe utilisé par l'app Superset pour se connecter
-   à sa metadata DB). Les deux doivent être identiques — sinon `superset-init` échoue avec
-   `password authentication failed`. Les deux sont alignées dans `docker/.env-local`.
-6. **Le proxy HTTP doit aussi être injecté dans les conteneurs**, pas seulement dans le
-   daemon Docker : `superset-init` installe des dépendances pip au démarrage
-   (`pip install -e .[postgres]`) et a besoin d'atteindre `pypi.org`. Ajouté
-   `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY` dans `docker/.env-local` (repris comme variables
-   d'environnement des conteneurs via `env_file`).
-7. **`superset-worker` / `superset-worker-beat` en échec** (connu, non résolu) :
-   - D'abord `ModuleNotFoundError: psycopg2` — le bootstrap Docker skip volontairement
-     l'installation des requirements Postgres pour les workers ("Skip postgres requirements
-     installation for workers to avoid conflicts"). Contourné en ajoutant
-     `docker/requirements-local.txt` (contenant `psycopg2-binary`), un mécanisme d'extension
-     officiel du bootstrap Superset installé pour tous les types de conteneurs.
-   - Ensuite `ModuleNotFoundError: No module named 'superset.tasks.deletion_retention'` —
-     semble être une incohérence dans l'image `apache/superset:latest` elle-même (bug amont,
-     pas lié à notre config). Les deux conteneurs ont été **arrêtés** (`docker stop`) pour
-     éviter une boucle de redémarrage infinie ; Celery n'est pas nécessaire pour l'upload CSV
-     synchrone via l'API REST, donc non bloquant pour l'objectif du projet. À creuser plus tard
-     si des fonctionnalités async (rapports planifiés, cache lourd, alertes) sont nécessaires.
+Les **décisions** (pourquoi Docker, pourquoi cette image, pourquoi cette base, pourquoi
+les workers sont désactivés) sont dans [`docs/decisions/`](docs/decisions/) et ne sont
+pas rejouées ici. Cette section ne garde que ce qui fait perdre du temps en pratique.
+
+1. **Pas de `sudo` interactif depuis Claude Code** (pas de TTY pour le mot de passe) :
+   les installations système — Docker et son plugin compose ici — doivent être faites
+   par un humain.
+2. **Le proxy HTTP se configure à trois endroits distincts**, et en oublier un donne des
+   symptômes très différents :
+   - **Daemon docker** — sinon les images ne se téléchargent pas (timeout vers
+     `registry-1.docker.io`). systemd n'hérite pas du proxy de l'environnement
+     utilisateur : drop-in `/etc/systemd/system/docker.service.d/http-proxy.conf`, puis
+     `systemctl daemon-reload && systemctl restart docker`. Déjà en place sur cette machine.
+   - **Conteneurs** — sinon `superset-init` échoue en installant ses dépendances pip.
+     Repris automatiquement de l'environnement par `superset.sh secrets`.
+   - **Builds d'image** — `docker build` n'hérite pas du proxy du daemon :
+     `--build-arg HTTP_PROXY=… --build-arg HTTPS_PROXY=…`.
+3. **`POSTGRES_PASSWORD` et `DATABASE_PASSWORD` doivent être identiques.** La première est
+   le mot de passe que le conteneur `db` attribue à l'utilisateur `superset`, la seconde
+   celui que l'application utilise pour joindre sa metadata DB. Un écart fait échouer
+   `superset-init` sur `password authentication failed`. `superset.sh secrets` les aligne.
+4. **La base Postgres `uploads` n'est créée par personne automatiquement.** Le tool
+   d'upload enregistre la *connexion* côté Superset mais pas la base : sans elle, l'upload
+   échoue sur `Unable to connect to database "uploads"`. `superset.sh up` la crée si elle
+   manque ; `superset.sh db-uploads` fait ce pas seul.
+5. **Les jeux de données d'exemple sont activés par défaut** dans le `docker/.env`
+   d'upstream. `superset.sh secrets` pose `SUPERSET_LOAD_EXAMPLES=no` : sans cela, la
+   première initialisation charge des centaines de milliers de lignes sans rapport avec
+   le projet et dure beaucoup plus longtemps.
+6. **Les workers Celery bouclent en redémarrage** sur cette image
+   (`ModuleNotFoundError: superset.tasks.deletion_retention`, bug amont). `superset.sh up`
+   ne les démarre donc pas du tout — plutôt que de les arrêter à la main après coup, ce
+   qui ne survivait pas au `up` suivant. `WITH_WORKERS=1 ./infra/superset/superset.sh up`
+   pour les lancer quand même. Sans effet sur l'upload synchrone (ADR-0006). Le correctif
+   `docker/requirements-local.txt` (`psycopg2-binary`) reste nécessaire et en place : sans
+   lui l'échec survient plus tôt, sur `ModuleNotFoundError: psycopg2`.
+7. **Ne jamais éditer un script shell pendant qu'il s'exécute** : bash lit le fichier au
+   fur et à mesure, et l'édition provoque une erreur de syntaxe trompeuse
+   (« fin de fichier prématurée ») sur du code pourtant valide.
 
 ## Skill / tool d'upload vers Superset (fait)
 
@@ -120,9 +122,9 @@ reproductible (ADR-0010).
   **Les scripts sont `COPY`'d dans l'image au build** (pas montés en live) : après toute
   modification de `scripts/`, il faut reconstruire
   (`docker build -t superset-uploader:latest .claude/skills/superset-upload/`).
-- **Base de données cible** : une base Postgres `uploads` a été créée dans le conteneur
-  `superset_db` (distincte de la metadata DB `superset`), enregistrée dans Superset comme
-  connexion `uploads` avec `allow_file_upload=true` et
+- **Base de données cible** : base Postgres `uploads` dans le conteneur `superset_db`,
+  distincte de la metadata DB `superset` (ADR-0004). Créée par `superset.sh up` si elle
+  manque ; le tool y enregistre la connexion Superset avec `allow_file_upload=true` et
   `schemas_allowed_for_file_upload: ["public"]`.
 - **Identifiants et config** dans `.env` à la racine (non versionné, voir `.gitignore`) :
   `SUPERSET_URL` (hostname **interne** au réseau docker, `http://superset_app:8088` —
@@ -131,8 +133,9 @@ reproductible (ADR-0010).
   pour le lien affiché en fin d'upload, cliquable depuis le navigateur de l'hôte),
   `SUPERSET_USERNAME`, `SUPERSET_PASSWORD`, `SUPERSET_UPLOAD_DATABASE`,
   `SUPERSET_UPLOAD_SQLALCHEMY_URI`.
-- **Testé de bout en bout** : upload d'un CSV de démo (`demo_ventes`) via `upload.sh` → table
-  Postgres créée → dataset Superset enregistré et interrogeable.
+- **Testé de bout en bout le 2026-08-27**, sur la stack vendorisée : CSV de démo de
+  200 lignes → table `uploads.ventes_demo` (200 lignes vérifiées en base) → dataset
+  Superset enregistré et interrogeable.
 - Point d'API clé découvert par lecture du code source Superset (pas de doc publique claire
   dessus) : `POST /api/v1/database/{id}/upload/`, payload `multipart/form-data` avec
   `type` (csv/excel/columnar), `table_name`, `file`, `already_exists` (fail/replace/append),
@@ -141,26 +144,21 @@ reproductible (ADR-0010).
   `400 CSRF session token is missing`), et le `schema` doit correspondre à
   `schemas_allowed_for_file_upload` sur la connexion sinon
   `Database schema is not allowed for csv uploads`.
-- **Historique de conception (venv → docker exec → image dédiée)** : un venv hôte a d'abord
-  été utilisé (une dépendance, `requests`), fonctionnel mais jugé incohérent avec un projet
-  "tout Docker" (retour utilisateur explicite). Piste suivante, `docker exec` dans le
-  conteneur `superset_app` déjà vivant (qui a `requests`) : rejetée, car elle aurait nécessité
-  de monter des chemins hôte (script, `.env`, fichier à uploader) dans un conteneur de service
-  **persistant** — les garde-fous de sécurité de l'environnement ont bloqué l'élargissement de
-  ce montage au-delà d'un seul dossier de scripts. Solution retenue : une image **dédiée et
-  jetable** (`superset-uploader`), avec un montage **minimal et éphémère** (un seul dossier,
-  le temps d'un `docker run --rm`) — élimine le Python hôte sans le compromis de sécurité du
-  montage large sur un conteneur permanent. Note technique annexe : `docker build`
-  n'hérite pas du proxy configuré au niveau du daemon (voir point 6) — passer
-  `--build-arg HTTP_PROXY=...`/`HTTPS_PROXY=...` pour les étapes `RUN pip install`.
+- **Pourquoi une image dédiée** plutôt qu'un venv hôte ou un `docker exec` dans
+  `superset_app` : voir **ADR-0005**, qui garde la trace des deux options écartées.
 
-## Prochaines étapes possibles
+## Skills du dépôt
 
-- Étendre le tool à d'autres formats déjà supportés par l'API (`columnar`/Parquet).
-- Ajouter la logique de préparation/comparaison multi-sources (cœur du projet) en amont de
-  l'upload, en pandas, avant d'appeler `upload_to_superset.py`.
-- Réparer `superset-worker` / `superset-worker-beat` si des fonctionnalités async deviennent
-  nécessaires (voir point 7 ci-dessus).
+| Skill | Rôle |
+|---|---|
+| [`superset-upload`](.claude/skills/superset-upload/SKILL.md) | Pousser un fichier CSV/Excel/Parquet dans Superset comme dataset |
+| [`project-init`](.claude/skills/project-init/SKILL.md) | Créer et auditer la configuration locale (`.env` / `.env.example`) |
+| [`decision-log`](.claude/skills/decision-log/SKILL.md) | Tracer décisions, délégations et spécifications sous `docs/` |
+
+## Prochaines étapes
+
+Voir [`docs/PASSATION.md`](docs/PASSATION.md) — état réel, points ouverts et prochaine
+action recommandée y sont tenus à jour en fin de session, plutôt que dupliqués ici.
 
 ## Configuration locale et secrets (skill `project-init`)
 

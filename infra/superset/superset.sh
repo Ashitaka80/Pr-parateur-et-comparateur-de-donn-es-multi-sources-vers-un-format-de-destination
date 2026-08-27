@@ -98,7 +98,16 @@ ensure_uploads_db() {
 
 case "${1:-}" in
   secrets) secrets ;;
-  up)      require_secrets; "${COMPOSE[@]}" up -d
+  up)      require_secrets
+           # Les workers Celery bouclent en redémarrage sur cette image (bug amont,
+           # ADR-0006) et ne servent pas à l'upload synchrone. On ne les démarre donc
+           # pas du tout, plutôt que de les arrêter à la main après coup.
+           # WITH_WORKERS=1 pour les lancer quand même (fonctionnalités asynchrones).
+           if [[ "${WITH_WORKERS:-0}" == "1" ]]; then
+             "${COMPOSE[@]}" up -d
+           else
+             "${COMPOSE[@]}" up -d --scale superset-worker=0 --scale superset-worker-beat=0
+           fi
            ensure_uploads_db || true
            echo; echo "Superset démarre sur http://localhost:8088 (première initialisation : plusieurs minutes)."
            echo "Suivre : ./infra/superset/superset.sh logs superset-init" ;;

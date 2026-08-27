@@ -12,21 +12,24 @@ multi-sources — n'est pas commencé.**
 
 ## État vérifié le 2026-08-27
 
-**La chaîne complète a été validée de bout en bout sur cette machine** : stack démarrée
-depuis `infra/superset/`, image `superset-uploader` construite, CSV de démo (200 lignes)
-uploadé, table `ventes_demo` créée dans la base `uploads` et dataset enregistré dans
-Superset (id 22), tous deux vérifiés en base.
+**La chaîne complète a été validée de bout en bout sur cette machine**, deux fois : une
+première fois à la main (stack démarrée depuis `infra/superset/`, image
+`superset-uploader` construite, CSV de démo 200 lignes uploadé, table `ventes_demo`
+créée puis nettoyée), puis via les commandes `bootstrap`/`smoke-test` ajoutées en fin
+de session (ADR-0011, voir plus bas) — upload d'un fichier de 10 lignes, vérifié en
+base, nettoyé automatiquement.
 
 Sur une **autre** machine, il reste à dérouler :
 
 ```bash
-./infra/superset/superset.sh secrets   # génère les mots de passe, les affiche
-./infra/superset/superset.sh up        # première init : plusieurs minutes
-docker build -t superset-uploader:latest \
-  --build-arg HTTP_PROXY="$HTTP_PROXY" --build-arg HTTPS_PROXY="$HTTPS_PROXY" \
-  .claude/skills/superset-upload/
-.claude/skills/project-init/init.sh check   # doit être au vert
+./infra/superset/superset.sh bootstrap     # .env, secrets, stack, image — idempotent
+./infra/superset/superset.sh smoke-test    # upload d'un fichier de test, vérifie, nettoie
 ```
+
+Le report manuel des deux valeurs de `superset.sh secrets` dans le `.env` racine — qui
+figurait ici — n'est plus nécessaire : `bootstrap` le fait (sans écraser une valeur déjà
+renseignée à la main). La séquence détaillée reste disponible dans `infra/superset/README.md`
+si une étape précise doit être rejouée seule.
 
 ## Historique — ce qui bloquait avant le 2026-08-27
 

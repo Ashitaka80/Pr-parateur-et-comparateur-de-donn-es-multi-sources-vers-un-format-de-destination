@@ -55,7 +55,12 @@ reproductible (ADR-0010).
 - **Emplacement** : `infra/superset/` — `docker-compose-image-tag.yml` et `docker/`
   repris tels quels d'`apache/superset` (commit noté dans `infra/superset/UPSTREAM`,
   en-têtes de licence Apache-2.0 conservés).
-- **Lancement** : `./infra/superset/superset.sh secrets` (une fois par machine) puis
+- **Lancement sur une machine neuve** : `./infra/superset/superset.sh bootstrap`
+  (ADR-0011) — enchaîne `.env`, `secrets`, `up`, attente du healthcheck, report des
+  secrets dans le `.env` racine, build de l'image `superset-uploader`, puis
+  `project-init check`. Idempotent. Suivi de `./infra/superset/superset.sh smoke-test`
+  pour vérifier la chaîne complète avec un fichier de test (uploadé puis nettoyé).
+  Étape par étape : `./infra/superset/superset.sh secrets` (une fois par machine) puis
   `./infra/superset/superset.sh up`. Le wrapper **fige le nom de projet compose à
   `superset`**, donc le réseau docker est toujours `superset_default` — valeur attendue
   par `upload.sh`, qui s'y attache.

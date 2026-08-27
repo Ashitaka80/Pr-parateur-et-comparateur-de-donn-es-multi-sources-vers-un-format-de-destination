@@ -171,6 +171,7 @@ pas rejouées ici. Cette section ne garde que ce qui fait perdre du temps en pra
 | Skill | Rôle |
 |---|---|
 | [`superset-upload`](.claude/skills/superset-upload/SKILL.md) | Pousser un fichier CSV/Excel/Parquet dans Superset comme dataset |
+| [`compare-sources`](.claude/skills/compare-sources/SKILL.md) | Comparer deux sources préparées (SPEC-0001) : appariement approché, doublons, rapport d'écarts |
 | [`project-init`](.claude/skills/project-init/SKILL.md) | Créer et auditer la configuration locale (`.env` / `.env.example`) |
 | [`decision-log`](.claude/skills/decision-log/SKILL.md) | Tracer décisions, délégations et spécifications sous `docs/` |
 

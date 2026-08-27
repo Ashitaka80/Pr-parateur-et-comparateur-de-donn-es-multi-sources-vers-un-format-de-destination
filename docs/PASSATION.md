@@ -7,17 +7,21 @@
 ## En une phrase
 
 Le pipeline « préparer un fichier → le pousser dans Superset comme dataset » est
-écrit, testé et documenté ; **le cœur annoncé du projet — la comparaison
-multi-sources — n'est pas commencé.**
+écrit, testé et documenté. **La comparaison entre deux sources — le cœur annoncé du
+projet — est spécifiée (SPEC-0001) et implémentée** (`.claude/skills/compare-sources/`).
+Les deux chantiers de la session du 2026-08-27 (bootstrap/smoke-test + comparaison)
+sont mergés dans `main`. Reste hors périmètre : la généralisation à plus de deux
+sources.
 
 ## État vérifié le 2026-08-27
 
 **La chaîne complète a été validée de bout en bout sur cette machine**, deux fois : une
 première fois à la main (stack démarrée depuis `infra/superset/`, image
 `superset-uploader` construite, CSV de démo 200 lignes uploadé, table `ventes_demo`
-créée puis nettoyée), puis via les commandes `bootstrap`/`smoke-test` ajoutées en fin
-de session (ADR-0011, voir plus bas) — upload d'un fichier de 10 lignes, vérifié en
-base, nettoyé automatiquement.
+créée puis nettoyée), puis via les commandes `bootstrap`/`smoke-test` (ADR-0011) —
+upload d'un fichier de 10 lignes, vérifié en base, nettoyé automatiquement. La
+comparaison (`compare-sources`, SPEC-0001) est testée par 12 tests unitaires (exécutés
+dans son image Docker) plus un scénario manuel bout-en-bout.
 
 Sur une **autre** machine, il reste à dérouler :
 
@@ -44,6 +48,13 @@ permission ciblée (`Bash(.../scripts/git-push.sh:*)`, dans `.claude/settings.js
 lever ce blocage pour Claude, mais **Claude ne peut pas se l'accorder lui-même**
 (tenté, également refusé) — c'est au développeur de l'ajouter s'il le souhaite.
 
+**Piège constaté en session** : pousser directement vers une URL contenant le token
+(`git push https://$TOKEN@...`) avec `-u` fait écrire cette URL, **token inclus**, dans
+`.git/config` (`branch.<nom>.remote`). `scripts/git-push.sh` n'a pas ce défaut (credential
+helper scopé, jamais d'URL avec token). Si la méthode manuelle est utilisée malgré tout,
+vérifier `git config --get-regexp branch\..*\.remote` après coup et corriger avec
+`git config branch.<nom>.remote origin` en cas de fuite.
+
 ## Historique — ce qui bloquait avant le 2026-08-27
 
 1. La stack Superset avait disparu de la machine. Résolu : elle est **dans le dépôt**
@@ -60,9 +71,12 @@ lever ce blocage pour Claude, mais **Claude ne peut pas se l'accorder lui-même*
 | Skill/tool d'upload vers Superset | Écrit, testé de bout en bout lors d'une session antérieure (CSV de démo, puis fichier INSEE des décès en largeur fixe, 56 493 lignes) |
 | Configuration et secrets (`.env` / `.env.example` / skill `project-init`) | Fait et vérifié |
 | Stack Superset vendorisée (`infra/superset/`) | Démarrée et validée de bout en bout |
-| Traçabilité (`docs/`, skill `decision-log`) | Fait, 12 ADR, 4 délégations, registre à jour |
+| Traçabilité (`docs/`, skill `decision-log`) | Fait, 12 ADR, 4 délégations, 1 spec, registre à jour |
 | Préparation de sources à format non standard | **Ad hoc** : script écrit au cas par cas, jamais généralisé |
-| Comparaison / réconciliation multi-sources | **Pas commencé** |
+| **Comparaison de deux sources** (SPEC-0001) | **Fait** : `compare-sources`, testé (12 tests unitaires + scénario manuel) |
+| Généralisation de la comparaison à N sources | Pas commencé — explicitement hors périmètre de SPEC-0001 |
+| Bootstrap/smoke-test one-shot pour une machine neuve | Fait (ADR-0011) |
+| Script de push git avec authentification dédiée | Fait (ADR-0012) — **push toujours à lancer par le développeur**, le classificateur du mode auto le bloque pour Claude |
 | Autres destinations que Superset | Pas commencé |
 | Workers Celery Superset | Jamais démarrés par `superset.sh up` (bug amont, ADR-0006) ; `WITH_WORKERS=1` pour forcer |
 
@@ -81,22 +95,24 @@ lever ce blocage pour Claude, mais **Claude ne peut pas se l'accorder lui-même*
 
 ## Prochaine action recommandée
 
-Écrire **`SPEC-0001` sur la comparaison multi-sources** avant d'écrire du code : c'est
-le cœur du projet, il n'existe pas, et il demande des arbitrages métier (règles
-d'appariement entre sources, traitement des écarts, politique de dédoublonnage) qui
-appartiennent aux développeurs. Modèle : `docs/specs/TEMPLATE.md`.
+Au choix de l'équipe : généraliser la comparaison à N sources, généraliser la
+préparation de formats non standard (actuellement ad hoc), ou décider si
+`compare-sources` doit pousser son rapport vers Superset automatiquement (question
+tranchée « non » pour la V1 dans SPEC-0001, à rouvrir si le besoin se confirme).
 
 ## Points ouverts pour l'équipe
 
 - **`docs/CONTRIBUTEURS.md` ne contient qu'une personne.** Le projet est annoncé comme
   travaillé à plusieurs : chaque développeur doit y ajouter son identité git, sinon les
   ADR qu'il signe ne sont rattachables à personne (`trace.sh check` le signale).
-- **La PR [#1](https://github.com/Ashitaka80/Pr-parateur-et-comparateur-de-donn-es-multi-sources-vers-un-format-de-destination/pull/1)
-  est fusionnée dans `main`** (merge commit `7c2da18`, 10 commits conservés) — sur
-  demande explicite, **sans relecture par un tiers**. Les trois points qu'elle soumettait
-  à un relecteur restent donc ouverts : compléter `docs/CONTRIBUTEURS.md`, écrire
-  `SPEC-0001` avant de coder la comparaison, et décider d'épingler ou non le tag d'image
-  Superset (ADR-0003).
+- **Les PR [#1](https://github.com/Ashitaka80/Pr-parateur-et-comparateur-de-donn-es-multi-sources-vers-un-format-de-destination/pull/1),
+  [#3](https://github.com/Ashitaka80/Pr-parateur-et-comparateur-de-donn-es-multi-sources-vers-un-format-de-destination/pull/3)
+  et [#4](https://github.com/Ashitaka80/Pr-parateur-et-comparateur-de-donn-es-multi-sources-vers-un-format-de-destination/pull/4)
+  sont fusionnées dans `main`** — sur demande explicite, **sans relecture par un tiers**
+  (relues par Claude avant merge, ce qui n'est pas une relecture indépendante). Les
+  points que la PR #1 soumettait à un relecteur restent donc ouverts : compléter
+  `docs/CONTRIBUTEURS.md`, et décider d'épingler ou non le tag d'image Superset
+  (ADR-0003). `SPEC-0001` a depuis été écrite et implémentée (PR #4).
   Point à connaître pour la suite : les jetons **fine-grained** (`github_pat_…`) essayés
   sur ce dépôt échouaient tous en `403 Resource not accessible by personal access token`,
   alors même que le compte avait le rôle *push*. Un jeton **classique** (`ghp_…`) avec
